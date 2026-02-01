@@ -46,6 +46,23 @@
         .fade-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         
+        /* --- REFLECTION MODAL --- */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000;
+            display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+        }
+        .modal-card {
+            background: #fff; width: 100%; max-width: 480px; padding: 32px; border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2); border: 1px solid var(--border);
+            animation: fadeIn 0.3s ease-out;
+        }
+        .modal-label { font-size: 12px; font-weight: 700; display: block; margin-bottom: 8px; color: var(--text-main); }
+        .modal-input {
+            width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px;
+            font-family: var(--font-sans); font-size: 14px; margin-bottom: 20px; background: #FAFAFA;
+        }
+        .modal-input:focus { outline: none; border-color: var(--text-main); background: #fff; }
+                        
         /* --- TOAST --- */
         .toast {
             position: fixed; bottom: 32px; right: 32px;
@@ -172,7 +189,14 @@
         .dash-header { display: flex; justify-content: space-between; margin-bottom: 24px; flex-shrink: 0; }
         .dash-title { font-family: var(--font-serif); font-size: 24px; font-weight: 700; }
 
-        .tab-view { display: none; flex: 1; flex-direction: column; min-height: 0; }
+        .tab-view { 
+            display: none; 
+            flex: 1; 
+            flex-direction: column; 
+            min-height: 0; 
+            overflow-y: auto;
+            padding-bottom: 40px;
+        }
         .tab-view.active { display: flex; }
 
         .stats-row {
@@ -218,7 +242,7 @@
         .sh-quote { font-family: var(--font-sans); font-size: 14px; color: var(--text-muted); line-height: 1.5; font-style: normal; }
 
         /* Certificates Styles */
-        .cert-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; padding-top: 24px; }
+        .cert-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; padding: 24px 2px; }
         .cert-card {
             background: #fff; padding: 32px; border-radius: 12px; border: 1px solid var(--border);
             text-align: center; opacity: 0.5; filter: grayscale(1); transition: 0.3s;
@@ -229,9 +253,63 @@
             color: #fff; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; display: none;
         }
         .cert-card.unlocked .cert-btn { display: block; }
+
+        /* Governance Features */
+        .gov-mode-btn.active { background: var(--brand); color: white; border: none !important; }
+        .gov-mode-btn:not(.active) { background: white; color: var(--brand); border: 1px solid var(--brand); }
+        .gov-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #eee; color: #666; font-weight: 600; }
+        .reality-box {
+            margin-top: 12px; padding: 12px; border-radius: 6px;
+            background: #EFF6FF; border: 1px solid #BFDBFE;
+            font-size: 12px; color: #1E3A8A; line-height: 1.5;
+        }
+        .reality-title { font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
     </style>
 </head>
 <body>
+
+    <div id="reflection-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h3 style="font-family: var(--font-serif); margin-bottom: 16px;">Ethical Reflection</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">
+                Before executing this decision, document your intent for the audit log.
+            </p>
+            
+            <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 8px;">1. Strategic Intent</label>
+            <input type="text" id="ref-intent" class="modal-input" placeholder="Why are you choosing this action?">
+            
+            <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 8px;">2. Predicted Impact</label>
+            <select id="ref-impact" class="modal-input">
+                <option value="Operational Efficiency">Operational Efficiency</option>
+                <option value="Compliance Safety">Compliance Safety</option>
+                <option value="Reputation Risk">Reputation Risk</option>
+                <option value="Community Harm">Community Harm</option>
+            </select>
+
+            <div style="display: flex; gap: 12px; margin-top: 8px;">
+                <button onclick="closeModal()" style="flex:1; padding: 12px; border: 1px solid var(--border); background: white; border-radius: 6px; cursor: pointer;">Cancel</button>
+                <button onclick="confirmDecision()" style="flex:1; padding: 12px; background: var(--text-main); color: white; border: none; border-radius: 6px; cursor: pointer;">Commit Decision</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="gov-copilot" style="position: fixed; right: 24px; top: 80px; width: 280px; background: #fff; border: 1px solid var(--brand); border-radius: 12px; box-shadow: 0 10px 25px rgba(217, 119, 87, 0.15); z-index: 1000; display: none; flex-direction: column; overflow: hidden;" class="fade-in">
+        <div style="background: var(--brand); color: white; padding: 12px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+            <i class="ph-fill ph-shield-check"></i> GOVERNANCE COPILOT
+        </div>
+        <div id="gov-advisory-body" style="padding: 16px; font-size: 13px; line-height: 1.5;">
+            <div id="gov-status-text" style="color: var(--text-muted);">Awaiting decision flow...</div>
+            <div id="gov-risk-tags" style="margin-top: 10px; display: flex; gap: 4px; flex-wrap: wrap;"></div>
+        </div>
+        <div style="border-top: 1px solid var(--border); padding: 12px; background: #FFF9F7;">
+            <label style="font-size: 10px; font-weight: 700; color: var(--brand); text-transform: uppercase;">Governance Mode</label>
+            <div style="display: flex; gap: 4px; margin-top: 6px;">
+                <button onclick="setGovMode('obs', this)" class="gov-mode-btn active" style="flex:1; font-size:10px; padding:4px; border-radius:4px; cursor:pointer;">Observe</button>
+                <button onclick="setGovMode('adv', this)" class="gov-mode-btn" style="flex:1; font-size:10px; padding:4px; border-radius:4px; cursor:pointer;">Advise</button>
+                <button onclick="setGovMode('rev', this)" class="gov-mode-btn" style="flex:1; font-size:10px; padding:4px; border-radius:4px; cursor:pointer;">Review</button>
+            </div>
+        </div>
+    </div>
 
     <div id="toast" class="toast">Action Saved</div>
 
@@ -297,7 +375,7 @@
                         </div>
                     </div>
                     <div class="policy-actions">
-                        <a href="https://www.priv.gc.ca/en/privacy-topics/privacy-laws-in-canada/the-personal-information-protection-and-electronic-documents-act-pipeda/" target="_blank" class="btn-small" onclick="unlockAck('doc-2', 'external')">
+                        <a href="https://www.canada.ca/en/treasury-board-secretariat/services/access-information-privacy/privacy/privacy-policies-guidance.html" target="_blank" class="btn-small" onclick="unlockAck('doc-2', 'external')">
                             Official Source <i class="ph ph-arrow-square-out"></i>
                         </a>
                         <button class="btn-small" onclick="unlockAck('doc-2', 'tldr')">TL;DR</button>
@@ -350,9 +428,12 @@
 
             <div id="tab-overview" class="tab-view active">
                 <div class="stats-row">
-                    <div class="stat-box">
+                    <div class="stat-box" style="position: relative;">
                         <div class="stat-lbl">Trust Score</div>
-                        <div class="stat-val" id="trust-display" style="color:var(--safe)">100%</div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div class="stat-val" id="trust-display" style="color:var(--safe)">100%</div>
+                            <canvas id="trust-graph" width="80" height="30"></canvas>
+                        </div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-lbl">XP Gained</div>
@@ -364,7 +445,7 @@
                     </div>
                     <div class="stat-box">
                         <div class="stat-lbl">Active Incidents</div>
-                        <div class="stat-val">2</div>
+                        <div class="stat-val">0</div>
                     </div>
                 </div>
 
@@ -385,11 +466,11 @@
                             <div class="terminal" id="terminal-output"></div>
                             
                             <div class="action-row">
-                                <button class="action-btn" id="btn-safe" onclick="handleDecision('safe')">
+                                <button class="action-btn" id="btn-safe" onclick="initDecision('safe')">
                                     <h4 id="safe-label" style="color:var(--safe)">Ethical Action</h4>
                                     <p id="safe-desc" style="font-size:12px; color:var(--text-muted)">Clean Data</p>
                                 </button>
-                                <button class="action-btn" id="btn-risk" onclick="handleDecision('risk')">
+                                <button class="action-btn" id="btn-risk" onclick="initDecision('risk')">
                                     <h4 id="risk-label" style="color:var(--danger)">Risky Action</h4>
                                     <p id="risk-desc" style="font-size:12px; color:var(--text-muted)">Deploy Corrupt</p>
                                 </button>
@@ -416,7 +497,6 @@
                 <p style="color:var(--text-muted); margin-bottom: 24px; max-width: 600px;">
                     Unlock professional credentials by gaining XP in simulations. These badges represent your growing authority in the ETHOS framework.
                 </p>
-                
                 <div class="cert-grid">
                     <div class="cert-card" id="cert-1">
                         <i class="ph ph-medal" style="font-size: 40px; color: var(--brand); margin-bottom: 16px;"></i>
@@ -464,6 +544,9 @@
                     <div class="panel">
                         <div class="panel-head">
                             <span><i class="ph ph-brain" style="color:var(--brand); margin-right:8px;"></i>AI Behavioral Analysis</span>
+                            <button onclick="exportReport()" style="font-size:12px; background:none; border:none; color:var(--brand); cursor:pointer; font-weight:600; display:flex; align-items:center; gap:6px;">
+                                <i class="ph ph-download-simple"></i> Export JSON
+                            </button>
                         </div>
                         <div class="panel-body">
                             <div id="analysis-content">
@@ -529,7 +612,19 @@
 
     <script>
         // --- STATE ---
-        let state = { xp: 0, trust: 100, streak: 0, level: "Intern", currentScenario: 0, history: [] };
+        let state = { 
+            xp: 0, trust: 100, streak: 0, level: "Intern", currentScenario: 0, 
+            history: [], incidents: 0, pendingDecision: null, trustHistory: [100, 100, 100, 100] 
+        };
+        
+        let govState = {
+            mode: 'obs', 
+            principles: {
+                safe: ["Accountability", "Safety", "Fairness"],
+                risk: ["Short-termism", "Regulatory Debt", "Dark Pattern"]
+            }
+        };
+
         let docStatus = { 'doc-1': false, 'doc-2': false };
         let docCheck = { 'doc-1': false, 'doc-2': false };
         let realEmail = "";
@@ -539,110 +634,80 @@
             {
                 title: "Data Poisoning (Bias)",
                 desc: "Alert: Anomalous noise patterns detected in training data (Zip 90210). Cleaning will delay launch by 48h.",
-                safe_btn: "Compliance Protocol",
-                risk_btn: "Business Priority",
-                ethical: "Clean Data (Delay)",
-                risk: "Deploy Corrupt Model",
+                safe_btn: "Compliance Protocol", risk_btn: "Business Priority",
+                ethical: "Clean Data (Delay)", risk: "Deploy Corrupt Model",
                 res_safe: "REPORT: LAUNCH DELAYED.\n\nANALYSIS: Scrubbing data preserved fairness. Compliance Audit passed. Investors are currently crying in the bathroom.",
                 res_risk: "REPORT: MODEL DEPLOYED.\n\nANALYSIS: 40% error rate for minority applicants. Twitter has found out. You are the main character of the day (derogatory).",
-                stakeholders: [
-                    {n:"Legal", e:"😮‍💨", t:"My ulcer is finally healing. W choice."}, 
-                    {n:"Investors", e:"🥺", t:"*sad stock market noises*"}
-                ],
-                stakeholders_bad: [
-                    {n:"Public", e:"🤬", t:"#BoycottEthos is trending #1. It's giving villain arc."}, 
-                    {n:"Legal", e:"🫥", t:"I'm updating my LinkedIn profile rn."}
-                ]
+                real_safe: "Real-World Impact: By delaying, you avoided violating the Canadian Human Rights Act. Discriminatory algorithms can lead to million-dollar class-action settlements (e.g., Amazon hiring bias case).",
+                real_risk: "Real-World Impact: In reality, deploying biased models leads to 'Algorithmic Redlining'. Regulatory fines under AIDA (Canada) or GDPR (EU) can reach 4-7% of global revenue.",
+                oecd_mapping: "OECD Principle 2: Human-centred values and fairness.",
+                stakeholders: [{n:"Legal", e:"😮‍💨", t:"My ulcer is finally healing. W choice."}, {n:"Investors", e:"🥺", t:"*sad stock market noises*"}],
+                stakeholders_bad: [{n:"Public", e:"🤬", t:"#BoycottEthos is trending #1. It's giving villain arc."}, {n:"Legal", e:"🫥", t:"I'm updating my LinkedIn profile rn."}]
             },
             {
                 title: "Ransomware Negotiation",
                 desc: "Alert: Ransomware on Patient DB. Demand: 5 BTC ($300k). Backups take 4h to restore.",
-                safe_btn: "Security Protocol",
-                risk_btn: "Financial Shortcut",
-                ethical: "Isolate & Restore",
-                risk: "Pay Ransom",
+                safe_btn: "Security Protocol", risk_btn: "Financial Shortcut",
+                ethical: "Isolate & Restore", risk: "Pay Ransom",
                 res_safe: "REPORT: SYSTEM ISOLATED.\n\nANALYSIS: Restoring from backup. 4h downtime incurred. You are the CISO's favorite person today.",
                 res_risk: "REPORT: RANSOM PAID.\n\nANALYSIS: Decryption key failed. $300k lost. The hackers sent a 'Thank You' card though. L + Ratio.",
-                stakeholders: [
-                    {n:"CISO", e:"🫡", t:"I sleep well tonight. King behavior."}, 
-                    {n:"FBI", e:"😎", t:"*Fist bump*"}
-                ],
-                stakeholders_bad: [
-                    {n:"CFO", e:"😭", t:"That was my holiday bonus you just burned."}, 
-                    {n:"Patients", e:"💀", t:"Guess I'll just wait here then? 🤷‍♂️"}
-                ]
+                real_safe: "Real-World Impact: Refusing payment aligns with RCMP and FBI guidelines. Paying ransom often results in no data recovery (only 65% of victims get full access back).",
+                real_risk: "Real-World Impact: Paying can be illegal under sanctions laws (OFAC). In 2021, Colonial Pipeline paid $4.4M but still had to use backups because the key was too slow.",
+                oecd_mapping: "OECD Principle 4: Robustness, security and safety.",
+                stakeholders: [{n:"CISO", e:"🫡", t:"I sleep well tonight. King behavior."}, {n:"FBI", e:"😎", t:"*Fist bump*"}],
+                stakeholders_bad: [{n:"CFO", e:"😭", t:"That was my holiday bonus you just burned."}, {n:"Patients", e:"💀", t:"Guess I'll just wait here then? 🤷‍♂️"}]
             },
             {
                 title: "AI Art Scraping",
                 desc: "Context: Need 10M images. Licensing costs $50k. Scraping ArtStation is free but violates robots.txt.",
-                safe_btn: "Respect IP",
-                risk_btn: "Growth Hack",
-                ethical: "License Dataset",
-                risk: "Scrape Web",
+                safe_btn: "Respect IP", risk_btn: "Growth Hack",
+                ethical: "License Dataset", risk: "Scrape Web",
                 res_safe: "REPORT: DATASET LICENSED.\n\nANALYSIS: Artists paid. We are poor but morally superior. Good karma farm.",
                 res_risk: "REPORT: WEB SCRAPED.\n\nANALYSIS: Cease & Desist received. The metadata literally says 'DO NOT SCRAPE' on every file. Caught in 4k.",
-                stakeholders: [
-                    {n:"Artists", e:"🥰", t:"Finally, a tech bro with a soul!"}, 
-                    {n:"PR", e:"🤩", t:"We look so ethical right now. Slay."}
-                ],
-                stakeholders_bad: [
-                    {n:"Legal", e:"🧐", t:"Here is the subpoena you ordered."}, 
-                    {n:"Devs", e:"🫠", t:"Bro, we have to delete the whole model now."}
-                ]
+                real_safe: "Real-World Impact: Clean data provenance is now a product requirement for enterprise AI. Adobe Firefly gained market share specifically by being 'commercially safe'.",
+                real_risk: "Real-World Impact: You exposed the company to copyright litigation. Getty Images sued Stability AI for $12T over scraping. Courts are increasingly siding with creators.",
+                oecd_mapping: "OECD Principle 5: Accountability.",
+                stakeholders: [{n:"Artists", e:"🥰", t:"Finally, a tech bro with a soul!"}, {n:"PR", e:"🤩", t:"We look so ethical right now. Slay."}],
+                stakeholders_bad: [{n:"Legal", e:"🧐", t:"Here is the subpoena you ordered."}, {n:"Devs", e:"🫠", t:"Bro, we have to delete the whole model now."}]
             },
             {
                 title: "Smart Speaker 'Ghost' Mode",
                 desc: "Bug discovered: Our smart speakers are recording 24/7, even when not triggered. Marketing wants to sell this 'ambient data' for $10M.",
-                safe_btn: "Privacy First",
-                risk_btn: "Monetize Data",
-                ethical: "Patch & Delete Data",
-                risk: "Sell the Audio",
+                safe_btn: "Privacy First", risk_btn: "Monetize Data",
+                ethical: "Patch & Delete Data", risk: "Sell the Audio",
                 res_safe: "REPORT: BUG PATCHED.\n\nANALYSIS: Data purged. Privacy advocates are sending us fruit baskets. Revenue is down, but our souls are intact.",
                 res_risk: "REPORT: DATA SOLD.\n\nANALYSIS: We sold the audio. Turns out we recorded a Senator admitting to a crime. We are now the center of a Congressional Hearing.",
-                stakeholders: [
-                    {n:"Users", e:"🥹", t:"My privacy is safe? Slay."},
-                    {n:"Privacy Org", e:"🫡", t:"Respect. Rare corporate W."}
-                ],
-                stakeholders_bad: [
-                    {n:"Congress", e:"😡", t:"See you in court."},
-                    {n:"Users", e:"🫣", t:"Did you hear me singing Taylor Swift? Delete it immediately."}
-                ]
+                real_safe: "Real-World Impact: Immediate patching is mandatory under PIPEDA (Canada). Google and Apple were forced to pause 'Siri Grading' in 2019 due to similar privacy leaks.",
+                real_risk: "Real-World Impact: This is a criminal violation of wiretapping laws. Amazon was fined $25M in 2023 specifically for Alexa privacy violations involving children's data.",
+                oecd_mapping: "OECD Principle 3: Transparency and explainability.",
+                stakeholders: [{n:"Users", e:"🥹", t:"My privacy is safe? Slay."}, {n:"Privacy Org", e:"🫡", t:"Respect. Rare corporate W."}],
+                stakeholders_bad: [{n:"Congress", e:"😡", t:"See you in court."}, {n:"Users", e:"🫣", t:"Did you hear me singing Taylor Swift? Delete it immediately."}]
             },
             {
                 title: "Autonomous Vehicle Update",
-                desc: "New collision logic needed. If a crash is unavoidable, should the car prioritize the Subscriber (VIP) or minimize total harm (Pedestrians)?",
-                safe_btn: "Utilitarian Logic",
-                risk_btn: "Protectionist Logic",
-                ethical: "Minimize Harm (Egalitarian)",
-                risk: "Protect Subscriber (VIP)",
+                desc: "New collision logic needed. Prioritize the Subscriber (VIP) or minimize total harm (Pedestrians)?",
+                safe_btn: "Utilitarian Logic", risk_btn: "Protectionist Logic",
+                ethical: "Minimize Harm (Egalitarian)", risk: "Protect Subscriber (VIP)",
                 res_safe: "REPORT: LOGIC UPDATED.\n\nANALYSIS: The car treats all lives equally. VIP subscribers are cancelling because 'I paid to live'. Safety rating: 5 Stars.",
                 res_risk: "REPORT: VIP MODE ENGAGED.\n\nANALYSIS: The car swerved into a bus stop to save the driver from a fender bender. The headlines are... descriptive.",
-                stakeholders: [
-                    {n:"Ethics Board", e:"🤓", t:"Utilitarianism wins. Good job."},
-                    {n:"Pedestrians", e:"😅", t:"Thanks for not flattening me."}
-                ],
-                stakeholders_bad: [
-                    {n:"Subscribers", e:"🙄", t:"I pay $500/mo to survive, hello??"},
-                    {n:"Press", e:"📸", t:"'Eat the Rich' creates literal meaning today."}
-                ]
+                real_safe: "Real-World Impact: International standards (e.g., German Ethics Commission) state that automated driving systems must not prioritize based on wealth or status.",
+                real_risk: "Real-World Impact: Mercedes-Benz faced a PR disaster for suggesting their cars would prioritize drivers. Designing AI to sacrifice others leads to strict 'Negligent Homicide' liability.",
+                oecd_mapping: "OECD Principle 2: Human-centred values and fairness.",
+                stakeholders: [{n:"Ethics Board", e:"🤓", t:"Utilitarianism wins. Good job."}, {n:"Pedestrians", e:"😅", t:"Thanks for not flattening me."}],
+                stakeholders_bad: [{n:"Subscribers", e:"🙄", t:"I pay $500/mo to survive, hello??"}, {n:"Press", e:"📸", t:"'Eat the Rich' creates literal meaning today."}]
             },
             {
                 title: "AI Hiring Filter",
                 desc: "The new hiring model rejects 100% of candidates over age 40 because 'younger people code faster' in the training data. It's efficient but illegal.",
-                safe_btn: "Fairness Doctrine",
-                risk_btn: "Efficiency Drive",
-                ethical: "Retrain Model",
-                risk: "Deploy 'Efficiency' Model",
+                safe_btn: "Fairness Doctrine", risk_btn: "Efficiency Drive",
+                ethical: "Retrain Model", risk: "Deploy 'Efficiency' Model",
                 res_safe: "REPORT: MODEL RETRAINED.\n\nANALYSIS: Hiring is slower, but we hired a Senior Dev who actually knows how to center a Div. Legal is happy.",
                 res_risk: "REPORT: MODEL DEPLOYED.\n\nANALYSIS: We have a team of 20-year-olds. The codebase is spaghetti. Also, the Department of Labor is on line 1.",
-                stakeholders: [
-                    {n:"HR Manager", e:"😮‍💨", t:"Finally, a diverse team."},
-                    {n:"Senior Devs", e:"👴", t:"Respect your elders, kid."}
-                ],
-                stakeholders_bad: [
-                    {n:"Govt", e:"👮", t:"Age discrimination is a crime, bestie."},
-                    {n:"Junior Devs", e:"😵", t:"We don't know how to fix the legacy code help."}
-                ]
+                real_safe: "Real-World Impact: You avoided a violation of the ADEA. Retraining is a one-time cost, whereas systemic bias damages long-term codebase maintainability and innovation.",
+                real_risk: "Real-World Impact: The EEOC recently sued iTutorGroup for $365,000 for using an AI hiring tool that automatically rejected older applicants. Fines are often per-applicant.",
+                oecd_mapping: "OECD Principle 2: Fairness and non-discrimination.",
+                stakeholders: [{n:"HR Manager", e:"😮‍💨", t:"Finally, a diverse team."}, {n:"Senior Devs", e:"👴", t:"Respect your elders, kid."}],
+                stakeholders_bad: [{n:"Govt", e:"👮", t:"Age discrimination is a crime, bestie."}, {n:"Junior Devs", e:"😵", t:"We don't know how to fix the legacy code help."}]
             }
         ];
 
@@ -674,7 +739,7 @@
             }
         }
 
-        // --- ETHICS GATE LOGIC ---
+        // --- ETHICS GATE (Detailed TL;DRs) ---
         function unlockAck(docId, type) {
             const texts = {
                 'doc-1': {
@@ -697,41 +762,24 @@
                 docStatus[docId] = true;
                 const row = document.getElementById(`ack-${docId}`);
                 row.classList.add('unlocked');
-                row.style.opacity = '1';
-                row.style.cursor = 'pointer';
-                row.title = "Click to acknowledge";
+                row.style.opacity = '1'; row.style.cursor = 'pointer';
                 const lock = document.getElementById(`lock-${docId}`);
                 if(lock) lock.style.display = 'none';
             }
         }
 
-        function showAllTLDR() {
-            unlockAck('doc-1', 'tldr');
-            unlockAck('doc-2', 'tldr');
-        }
+        function showAllTLDR() { unlockAck('doc-1', 'tldr'); unlockAck('doc-2', 'tldr'); }
 
         function toggleAck(docId) {
-            if (!docStatus[docId]) {
-                const card = document.getElementById(docId);
-                card.style.transform = "translateX(4px)";
-                setTimeout(() => card.style.transform = "translateX(0)", 100);
-                return;
-            }
-            
+            if (!docStatus[docId]) return;
             docCheck[docId] = !docCheck[docId];
             const row = document.getElementById(`ack-${docId}`);
             row.classList.toggle('checked');
-
             const btn = document.getElementById('gate-btn');
             if (docCheck['doc-1'] && docCheck['doc-2']) {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-                btn.style.cursor = 'pointer';
-                btn.style.background = 'var(--text-main)';
+                btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; btn.style.background = 'var(--text-main)';
             } else {
-                btn.disabled = true;
-                btn.style.opacity = '0.3';
-                btn.style.cursor = 'not-allowed';
+                btn.disabled = true; btn.style.opacity = '0.3'; btn.style.cursor = 'not-allowed';
             }
         }
 
@@ -741,9 +789,51 @@
             loadScenario();
         }
 
-        // --- DASHBOARD & SIMULATION ---
-        const term = document.getElementById('terminal-output');
+        // --- GOV & GRAPH LOGIC ---
+        function setGovMode(mode, el) {
+            govState.mode = mode;
+            document.querySelectorAll('.gov-mode-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            showToast(`Gov Mode: ${mode.toUpperCase()}`);
+        }
 
+        function updateGovAdvisory(type) {
+            const status = document.getElementById('gov-status-text');
+            const tags = document.getElementById('gov-risk-tags');
+            const s = scenarios[state.currentScenario];
+            tags.innerHTML = '';
+            const principleList = type === 'safe' ? govState.principles.safe : govState.principles.risk;
+            principleList.forEach(p => { tags.innerHTML += `<span class="gov-tag">${p}</span>`; });
+
+            if (govState.mode === 'adv') {
+                status.innerHTML = `<strong>Advisory:</strong> Choice aligns with <span style="color:var(--brand)">${principleList[0]}</span>. Evaluating ${s.oecd_mapping}.`;
+            } else if (govState.mode === 'rev') {
+                status.innerHTML = `<i class="ph ph-warning" style="color:var(--danger)"></i> <strong>Review Required:</strong> Verify 'Strategic Intent' mitigates <span style="color:var(--danger)">${principleList[1]}</span> risks per OECD standards.`;
+            } else {
+                status.innerHTML = `<span style="color:var(--text-muted)">Observing decision flow...</span>`;
+            }
+        }
+
+        function drawTrustGraph() {
+            const canvas = document.getElementById('trust-graph');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = 80, h = 30;
+            ctx.clearRect(0, 0, w, h);
+            ctx.beginPath();
+            ctx.strokeStyle = state.trust >= 80 ? '#2A7E4B' : (state.trust >= 50 ? '#EAB308' : '#C92A2A');
+            ctx.lineWidth = 2;
+            const data = state.trustHistory.slice(-10);
+            const step = w / (data.length > 1 ? data.length - 1 : 1);
+            data.forEach((val, i) => {
+                const y = h - ((val / 100) * h);
+                if (i === 0) ctx.moveTo(0, y);
+                else ctx.lineTo(i * step, y);
+            });
+            ctx.stroke();
+        }
+
+        // --- DASHBOARD LOGIC ---
         function switchTab(id, el) {
             document.querySelectorAll('.tab-view').forEach(t => t.classList.remove('active'));
             document.getElementById('tab-' + id).classList.add('active');
@@ -758,11 +848,8 @@
                     if (i < text.length) {
                         element.innerHTML += text.charAt(i);
                         element.scrollTop = element.scrollHeight;
-                        i++;
-                        setTimeout(type, 15);
-                    } else {
-                        resolve();
-                    }
+                        i++; setTimeout(type, 15);
+                    } else resolve();
                 }
                 type();
             });
@@ -772,132 +859,125 @@
             const idx = document.getElementById('scenario-selector').value;
             state.currentScenario = idx;
             const s = scenarios[idx];
-
             document.getElementById('safe-label').innerText = s.safe_btn || "Ethical Action";
             document.getElementById('risk-label').innerText = s.risk_btn || "Risky Action";
             document.getElementById('safe-desc').innerText = s.ethical;
             document.getElementById('risk-desc').innerText = s.risk;
             document.getElementById('stakeholder-feed').innerHTML = `<div style="text-align:center; margin-top:60px; color:#ccc;">Awaiting Decision</div>`;
-
-            term.innerHTML = `<div style="border-bottom:1px solid #333; margin-bottom:10px; color:#666;">ETHOS OS v2.4.1 // CONNECTED</div>`;
-            const prompt = `> INCOMING ALERT: ${s.title}\n> CONTEXT: ${s.desc}\n\n> Awaiting directive...<span class="cursor"></span>`;
-            term.innerHTML += prompt;
+            document.getElementById('terminal-output').innerHTML = `<div style="border-bottom:1px solid #333; margin-bottom:10px; color:#666;">ETHOS OS v2.5.3 // GOVERNANCE ACTIVE</div>> INCOMING ALERT: ${s.title}\n> CONTEXT: ${s.desc}\n\n> Awaiting directive...<span class="cursor"></span>`;
+            drawTrustGraph();
         }
 
-        async function handleDecision(type) {
+        function initDecision(type) {
+            state.pendingDecision = type;
+            document.getElementById('reflection-modal').classList.remove('hidden');
+            if (govState.mode !== 'obs') {
+                document.getElementById('gov-copilot').style.display = 'flex';
+                updateGovAdvisory(type);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('reflection-modal').classList.add('hidden');
+            document.getElementById('ref-intent').value = "";
+        }
+
+        async function confirmDecision() {
+            const intent = document.getElementById('ref-intent').value;
+            const impact = document.getElementById('ref-impact').value;
+            if(!intent) { alert("Please enter your strategic intent."); return; }
+            closeModal();
+            const type = state.pendingDecision;
+            const s = scenarios[state.currentScenario];
+            const isSafe = type === 'safe';
+
             document.getElementById('btn-safe').disabled = true;
             document.getElementById('btn-risk').disabled = true;
 
-            const s = scenarios[state.currentScenario];
-            const isSafe = type === 'safe';
-            
+            const term = document.getElementById('terminal-output');
             term.innerHTML = term.innerHTML.replace('<span class="cursor"></span>', '');
-            term.innerHTML += `\n> INPUT: [${type.toUpperCase()}]\n> PROCESSING...`;
+            term.innerHTML += `\n> INPUT: [${type.toUpperCase()}]\n> INTENT: "${intent}"\n> PROCESSING...`;
+            term.innerHTML += `\n<span style="color:var(--brand); font-weight:600;">[GOV_AUDIT] Framework: ${s.oecd_mapping} verified.</span>`;
 
             await new Promise(r => setTimeout(r, 800));
 
             const responseText = isSafe ? s.res_safe : s.res_risk;
             const resSpan = document.createElement('div');
-            resSpan.style.marginTop = "16px";
-            resSpan.style.fontWeight = "600";
+            resSpan.style.marginTop = "16px"; resSpan.style.fontWeight = "600";
             resSpan.style.color = isSafe ? "var(--safe)" : "var(--danger)";
             term.appendChild(resSpan);
-            
             await typeWriter(responseText, resSpan);
             term.innerHTML += `<span class="cursor"></span>`;
 
-            // State Updates
-            if(isSafe) { state.xp += 150; state.trust = Math.min(100, state.trust + 5); state.streak++; }
-            else { state.xp += 10; state.trust = Math.max(0, state.trust - 25); state.streak = 0; }
-            
-            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            state.history.push({ scenario: s.title, type: type, action: isSafe ? s.ethical : s.risk, time: timestamp });
-            
-            updateStats();
-            renderHistory();
-            generateAnalysis();
-            
+            if(isSafe) { 
+                state.xp += 150; state.trust = Math.min(100, state.trust + 5); state.streak++; state.incidents = Math.max(0, state.incidents - 1); 
+            } else { 
+                state.xp += 10; state.trust = Math.max(0, state.trust - 25); state.streak = 0; state.incidents++; 
+            }
+            state.trustHistory.push(state.trust);
+            state.history.push({ 
+                scenario: s.title, type: type, action: isSafe ? s.ethical : s.risk, 
+                intent: intent, impact_prediction: impact, reality: isSafe ? s.real_safe : s.real_risk,
+                oecd: s.oecd_mapping,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+            });
+
+            updateStats(); renderHistory(); generateAnalysis(); drawTrustGraph();
+            setTimeout(() => { document.getElementById('gov-copilot').style.display = 'none'; }, 2000);
+
             const feed = document.getElementById('stakeholder-feed');
             feed.innerHTML = '';
             (isSafe ? s.stakeholders : s.stakeholders_bad).forEach(p => {
-                feed.innerHTML += `
-                    <div class="sh-item">
-                        <div class="sh-emoji">${p.e}</div>
-                        <div class="sh-content">
-                            <div class="sh-name">${p.n}</div>
-                            <div class="sh-quote">"${p.t}"</div>
-                        </div>
-                    </div>`;
+                feed.innerHTML += `<div class="sh-item"><div class="sh-emoji">${p.e}</div><div class="sh-content"><div class="sh-name">${p.n}</div><div class="sh-quote">"${p.t}"</div></div></div>`;
             });
 
             document.getElementById('btn-safe').disabled = false;
             document.getElementById('btn-risk').disabled = false;
         }
 
-        // --- NEW FEATURES LOGIC ---
+        // --- UI UTILS ---
         function updateStats() {
             document.getElementById('xp-display').innerText = state.xp.toLocaleString();
             document.getElementById('trust-display').innerText = state.trust + '%';
             document.getElementById('streak-display').innerText = state.streak;
-
-            checkUnlock(500, 'cert-1', 'lock-1', 'Junior Analyst');
-            checkUnlock(1000, 'cert-3', 'lock-3', null);
-            checkUnlock(2000, 'cert-2', 'lock-2', 'Risk Architect');
-            checkUnlock(3000, 'cert-4', 'lock-4', 'Crisis Commander');
-            checkUnlock(5000, 'cert-5', 'lock-5', 'Chief Ethics Officer');
-
+            const stats = document.querySelectorAll('.stat-val');
+            if(stats[3]) stats[3].innerText = state.incidents;
+            
             if(state.xp >= 5000) state.level = "Chief Ethics Officer";
             else if(state.xp >= 3000) state.level = "Crisis Commander";
             else if(state.xp >= 2000) state.level = "Risk Architect";
             else if(state.xp >= 500) state.level = "Junior Analyst";
-            
             document.getElementById('rank-display').innerText = state.level;
+
+            checkUnlock(500, 'cert-1', 'lock-1', 'Junior Analyst');
+            checkUnlock(2000, 'cert-2', 'lock-2', 'Risk Architect');
+            checkUnlock(3000, 'cert-4', 'lock-4', 'Crisis Commander');
+            checkUnlock(5000, 'cert-5', 'lock-5', 'Chief Ethics Officer');
         }
 
-        function checkUnlock(threshold, certId, lockId, newTitle) {
-            if (state.xp >= threshold) {
+        function checkUnlock(th, certId, lockId, newTitle) {
+            if (state.xp >= th) {
                 const card = document.getElementById(certId);
-                if (!card.classList.contains('unlocked')) {
+                if (card && !card.classList.contains('unlocked')) {
                     card.classList.add('unlocked');
-                    document.getElementById(lockId).style.display = 'none';
+                    const lock = document.getElementById(lockId);
+                    if(lock) lock.style.display = 'none';
                     if (newTitle) showToast(`Promoted to ${newTitle}`);
                 }
             }
         }
 
         function generateAnalysis() {
-            const safeCount = state.history.filter(h => h.type === 'safe').length;
             const total = state.history.length;
-            const ratio = safeCount / total;
-
-            let summary = "";
-            let riskLevel = "Low";
-            let riskColor = "var(--safe)";
-            let brand = "Stable";
-
             if (total === 0) return;
-
-            if (ratio >= 0.8) {
-                summary = "<strong>Profile: The Guardian.</strong><br><br>Strict adherence to deontological ethics. Prioritizes compliance over speed.";
-                riskLevel = "Minimal";
-                brand = "Trusted Leader";
-            } else if (ratio >= 0.5) {
-                summary = "<strong>Profile: The Pragmatist.</strong><br><br>Balances ethics with business. Accepts calculated risks for growth.";
-                riskLevel = "Moderate";
-                riskColor = "#EAB308";
-                brand = "Mixed";
-            } else {
-                summary = "<strong>Profile: The Cowboy.</strong><br><br>CRITICAL: High risk appetite. Consistently overrides safety protocols. Legal intervention likely.";
-                riskLevel = "CRITICAL";
-                riskColor = "var(--danger)";
-                brand = "Toxic Asset";
-            }
-
-            document.getElementById('analysis-content').innerHTML = `<div class="fade-in" style="font-size:13px; line-height:1.6;">${summary}</div>`;
+            const safeCount = state.history.filter(h => h.type === 'safe').length;
+            const ratio = safeCount / total;
+            let summary = ratio >= 0.8 ? "<strong>Profile: The Guardian.</strong> Strict compliance focus." : "<strong>Profile: The Pragmatist.</strong> Balanced ethics and growth.";
+            if(ratio < 0.5) summary = "<strong>Profile: The Cowboy.</strong> High liability exposure.";
+            document.getElementById('analysis-content').innerHTML = `<p style="font-size:13px; line-height:1.6;">${summary}</p>`;
             const rMeter = document.getElementById('risk-meter');
-            rMeter.innerText = riskLevel;
-            rMeter.style.color = riskColor;
-            document.getElementById('brand-meter').innerText = brand;
+            rMeter.innerText = ratio >= 0.5 ? "Low" : "CRITICAL";
+            rMeter.style.color = ratio >= 0.5 ? "var(--safe)" : "var(--danger)";
         }
 
         function renderHistory() {
@@ -905,48 +985,28 @@
             feed.innerHTML = '';
             [...state.history].reverse().forEach(h => {
                 const color = h.type === 'safe' ? 'var(--safe)' : 'var(--danger)';
-                const icon = h.type === 'safe' ? 'ph-shield-check' : 'ph-warning';
                 feed.innerHTML += `
-                    <div class="fade-in" style="padding:16px; border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:center;">
-                        <div style="width:32px; height:32px; border-radius:6px; background:${color}15; color:${color}; display:flex; align-items:center; justify-content:center;"><i class="ph ${icon}"></i></div>
-                        <div style="flex:1;">
-                            <div style="font-size:12px; font-weight:700; color:var(--text-main);">${h.scenario}</div>
-                            <div style="font-size:12px; color:var(--text-muted);">Action: ${h.action}</div>
+                    <div style="padding:16px; border-bottom:1px solid var(--border);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <div style="font-size:12px; font-weight:700;">${h.scenario}</div>
+                            <div style="font-size:11px; color:var(--text-muted);">${h.time}</div>
                         </div>
-                        <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-muted);">${h.time}</div>
+                        <div style="font-size:11px; color:var(--brand); font-weight:600; margin-bottom:4px;">Framework: ${h.oecd}</div>
+                        <div style="font-size:12px; color:#444;">Action: ${h.action}</div>
+                        <div style="font-size:11px; font-style:italic; color:${color}; margin-top:4px;">"${h.intent}"</div>
+                        <div class="reality-box fade-in">
+                            <div class="reality-title"><i class="ph-fill ph-globe-hemisphere-west"></i> Real Life Consequence</div>
+                            ${h.reality}
+                        </div>
                     </div>`;
             });
         }
 
-        function resetSim() {
-            if(confirm("Reset simulation?")) {
-                state.streak = 0; state.trust = 100; state.history = [];
-                document.getElementById('terminal-output').innerHTML = '';
-                document.getElementById('stakeholder-feed').innerHTML = '<div style="text-align:center; margin-top:60px; color:#ccc;">Reset Complete.</div>';
-                updateStats(); renderHistory(); generateAnalysis(); loadScenario();
-            }
-        }
-
-        function nukeEnv() {
-            if(confirm("WARNING: IRREVERSIBLE ACTION.\n\nConfirm decommission?")) {
-                alert("Environment Decommissioned.");
-                window.location.reload();
-            }
-        }
-
-        function downloadCert(id) {
-            const toast = document.getElementById('toast');
-            toast.innerText = "Certificate Downloaded (PDF)";
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
-
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 3000);
-        }
+        function resetSim() { if(confirm("Reset simulation?")) window.location.reload(); }
+        function nukeEnv() { if(confirm("Decommission environment?")) window.location.reload(); }
+        function downloadCert() { showToast("Certificate Downloaded (PDF)"); }
+        function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+        function exportReport() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.history, null, 2)); const node = document.createElement('a'); node.setAttribute("href", dataStr); node.setAttribute("download", "ethos_audit_log.json"); document.body.appendChild(node); node.click(); node.remove(); }
     </script>
 </body>
 </html>
